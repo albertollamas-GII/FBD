@@ -1,0 +1,234 @@
+CREATE TABLE proveedor(
+    CodPro  char(3)  constraint CODPRO_ES_CLAVE Primary Key,
+    NomPro  varchar2(30)  constraint NOMPRO_NO_ES_NULO not null,
+    Status  Number(2)  constraint STATUS_VALOR_ENTRE_1_Y_10 CHECK(Status>=1 and Status<=10),
+    Ciudad  varchar2(15)
+);
+
+CREATE TABLE pieza(
+    CodPie  char(3)  constraint CODPIE_ES_CLAVE Primary Key,
+    NomPie  varchar2(10)  constraint NOMPIE_NO_ES_NULO  not null,
+    Peso  Number(5,2)  constraint PESO_ENTRE_1_y_100 CHECK (Peso>0 and Peso<=100),
+    Color  varchar2(10),
+    Ciudad varchar2(15)    
+);
+
+CREATE TABLE proyecto(
+    CodPj  char(3)  constraint CODPJ_ES_CLAVE Primary Key,
+    NomPJ  varchar(10)  constraint NOMPJ_ES_NO_NULO not null
+);
+
+CREATE TABLE ventas(
+    CodPro  char(3)  constraint CODPRO_IGUAL_CODPRO_PROVEEDOR references proveedor(CodPro),
+    CodPie  char(3)  constraint CODPIE_IGUAL_CODPIE_PIEZA references pieza(CodPie),
+    CodPj  char(3)  constraint CODPJ_IGUAL_CODPJ_PROYECTO references proyecto(CodPj),
+    Cantidad  number(4),
+    Primary Key(CodPro, CodPie, CodPj)
+);
+
+/*Muestra estructura de la tabla*/
+DESCRIBE proveedor;
+DESCRIBE pieza;
+DESCRIBE proyecto;
+DESCRIBE ventas;
+
+/*Modifica estructura de la tabla*/
+ALTER TABLE ventas ADD(Fecha  date  DEFAULT sysdate);
+ALTER TABLE proyecto ADD(Ciudad  varchar2(15));
+
+INSERT INTO proveedor VALUES('S1', 'JOSE FERNANDEZ', 2, 'MADRID');
+INSERT INTO proveedor VALUES('S2', 'MANUEL VIDAL', 1, 'LONDRES');
+INSERT INTO proveedor VALUES('S3', 'LUISA GOMEZ', 3, 'LISBOA');
+INSERT INTO proveedor VALUES('S4', 'PEDRO SANCHEZ', 4, 'PARIS');
+INSERT INTO proveedor VALUES('S5', 'MARIA REYES', 5, 'ROMA');
+
+/*Muestra contenido de la tabla*/
+SELECT * FROM proveedor;
+
+INSERT INTO pieza VALUES('P1', 'TUERCA', 2.5, 'GRIS', 'MADRID');
+INSERT INTO pieza VALUES('P2', 'TORNILLO', 1.25, 'ROJO', 'PARIS');
+INSERT INTO pieza VALUES('P3', 'ARANDELA', 3, 'BLANCO', 'LONDRES');
+INSERT INTO pieza VALUES('P4', 'CLAVO', 5.5, 'GRIS', 'LISBOA');
+INSERT INTO pieza VALUES('P5', 'ALCAYATA',10.0, 'BLANCO', 'ROMA');
+
+INSERT INTO proyecto VALUES('J1', 'PROYECTO 1', 'LONDRES');
+INSERT INTO proyecto VALUES('J2', 'PROYECTO 2', 'LONDRES');
+INSERT INTO proyecto VALUES('J3', 'PROYECTO 3', 'PARIS');
+INSERT INTO proyecto VALUES('J4', 'PROYECTO 4', 'ROMA');
+
+DESCRIBE opc.ventas;
+/* Inserta el contenido de la tabla de olga en la mia*/
+INSERT INTO ventas (SELECT * FROM opc.ventas);
+SELECT * FROM ventas;
+
+COMMIT
+
+/*Piezas de color gris*//*Upper distingue mayusculas de minusculas*/
+SELECT * FROM pieza WHERE upper(Color)='GRIS';
+/*Codigos proveedor que venden pieza P1*/ /*Distinct elimina repetidos*/
+SELECT DISTINCT CODPRO FROM ventas WHERE CODPIE='P1';
+/*Proyectos de londres*/
+SELECT * FROM proyecto WHERE Ciudad='LONDRES';
+/*Piezas que empiezen por A*/
+SELECT * FROM pieza WHERE NOMPIE LIKE 'A%';
+
+/*Partidos anteriores a 01/01/17*/
+SELECT * FROM opc.encuentros WHERE (fecha <= '01/01/17');
+/*Listar los jugadores unicaja*/
+SELECT * FROM opc.jugadores WHERE(CODE='UNI');
+
+/*Tabla mezclada de proveedor y ventas en la que cad aproveedor se asocia a sus ventas realizadas*/
+SELECT * FROM proveedor, ventas where proveedor.codpro = ventas.codpro;
+
+/*Listado ordenado por nombre de los proveedores con status >2 que hayan vendido la pieza 'P1'*/
+SELECT nompro, proveedor.codpro FROM proveedor, ventas WHERE (proveedor.codpro = ventas.codpro) and (status>2) and (Codpie='P1') order by proveedor.NOMPRO;
+
+/*Nombre ordenado de proveedores con status >2 que han vendido piezas grises o blancas*/
+SELECT DISTINCT * FROM proveedor, ventas, pieza WHERE (proveedor.codpro = ventas.codpro) and (pieza.codpie = ventas.codpie) and upper(Color) in ('GRIS', 'BLANCO') and (status>2) order by proveedor.NOMPRO;
+
+/*Codigos de proveedores que han vendido piezas grises o blancas*/
+SELECT DISTINCT ventas.codpro from pieza, ventas WHERE (pieza.codpie = ventas.codpie) and upper(color) IN ('GRIS', 'BLANCO');
+/*Otro modo de hacerlo*/
+SELECT DISTINCT codpro from ventas where codpie IN (SELECT codpie from pieza where upper(color) IN ('GRIS', 'BLANCO'));
+
+/*Listado de los jugadores que participaron en los encuentros entre real madrid y valencia local-visitante*/
+SELECT * FROM opc.jugadores, opc.faltas WHERE (opc.jugadores.codJ = opc.faltas.codj)and (opc.faltas.EQ1 = 'RMA') and (opc.faltas.EQ2='VAL');
+/*Nombre equipo del jugador felipe reyes*/
+SELECT opc.equipos.nombree FROM opc.equipos, opc.jugadores WHERE (opc.equipos.code = opc.jugadores.code) and upper(Nombrej) in ('FELIPE REYES');
+/*Jugadores del barcelona que han cometido mas de tres faltas jugando en casa*/
+SELECT * FROM opc.jugadores, opc.faltas WHERE (opc.jugadores.codJ = opc.faltas.codj)and (opc.faltas.EQ1 = 'FCB') and (opc.faltas.num >3);
+/*Encuentros en los que ha ganado el equipo visitante*/
+SELECT * FROM opc.encuentros WHERE (opc.encuentros.res1 < opc.encuentros.res2);
+
+SELECT * FROM pieza, ventas WHERE (pieza.codpie = ventas.codpie) and (upper(pieza.ciudad) in ('PARIS') OR (ventas.codpro = 'S1'));
+/*Resuelto con operador union*/
+(SELECT pieza.codpie FROM pieza where upper(pieza.ciudad) in ('PARIS'))
+UNION
+(SELECT ventas.codpie FROM ventas where codpro='S1');
+
+/* Piezas fabricadas en Paris Y que hayan sido suministradas por S1*/
+SELECT * FROM pieza, ventas WHERE (pieza.codpie = ventas.codpie) and (upper(pieza.ciudad) in ('PARIS') AND (ventas.codpro = 'S1'));
+/*Resuelto con operador interseccion*/
+(SELECT pieza.codpie FROM pieza where upper(pieza.ciudad) in ('PARIS'))
+INTERSECT
+(SELECT ventas.codpie FROM ventas where codpro='S1');
+
+/*Muestra toda la información de la pieza*/
+SELECT * FROM PIEZA WHERE CODPIE IN ((SELECT pieza.codpie FROM pieza where upper(pieza.ciudad) in ('PARIS'))
+INTERSECT
+(SELECT ventas.codpie FROM ventas where codpro='S1'));
+/*otra forma*/
+SELECT * FROM ((SELECT pieza.codpie FROM pieza where upper(pieza.ciudad) in ('PARIS'))
+INTERSECT
+(SELECT ventas.codpie FROM ventas where codpro='S1')) T, PIEZA WHERE (T.CODPIE = PIEZA.CODPIE);
+
+/*MINUS ES SIMILAR A NOT IN ...*/
+
+/*EQUIPOS QUE NO HAN JUGADO NUNCA FUERA DE CASA TODAVIA*/
+(SELECT CODE FROM OPC.EQUIPOS)
+MINUS
+(SELECT EQ2 FROM OPC.ENCUENTROS WHERE (fecha<'01/01/17'));
+
+/*Jugadores del valencia que no tengan mas de tres faltas*/
+(SELECT CODJ FROM OPC.JUGADORES WHERE CODE='VAL')
+MINUS
+(SELECT CODJ FROM OPC.FALTAS WHERE (NUM <= 3) AND CODJ IN (SELECT CODJ FROM OPC.JUGADORES WHERE CODE='VAL'));
+
+/*EJERCICIOS
+3.7 3.8 3.9 3.10 3.11 3.12 3.13 3.15 3.16 3.17 3.18 3.19 3.20 3.21 3.31 3.32 3.33 3.35*/
+
+/*JUGADORES QUE NO HAN JUGADO NINGUN PARTIDO*/
+(SELECT CODJ FROM OPC.JUGADORES)
+MINUS
+(SELECT CODJ FROM OPC.FALTAS);
+
+/*Suma total ventas y media*/
+SELECT SUM(cantidad), AVG(cantidad) from ventas;
+/*Numerod de proveedores diferentes*/
+SELECT COUNT(DISTINCT codpro) from ventas;
+
+/*Maximo de cantidad*/
+SELECT * from ventas where cantidad >= ALL(select cantidad from ventas);
+/*Otra forma de hacerlo*/
+SELECT * from ventas where cantidad = (select max(cantidad) from ventas);
+
+/*Total de ventas para cada proveedor*/
+select codpro, SUM(cantidad), AVG(cantidad) from ventas group by codpro;
+
+/*Similar a la anterior pero con info de proveedor*/
+select * from proveedor,(select codpro, SUM(cantidad), AVG(cantidad) from ventas group by codpro) t  where proveedor.codpro = t.codpro;
+
+/*Proveedores que han vendido mas de 2000 unidades en total*/
+select codpro, SUM(cantidad), AVG(cantidad) from ventas group by codpro having sum(cantidad)>2000;
+
+/*de cada proveedor, encontrar la cantidad maxima de unidades vendidas de la pieza P2*/
+select codpro, max(cantidad) from ventas where codpie = 'P2' group by codpro;
+
+/*Para cada proyecto calcular el numero de piezas diferentes que ha usado y mostrar los que usen más de tres*/
+SELECT codpj, count (distinct codpie) from ventas group by codpj having count(distinct codpie) >3;
+
+/*Encontrar pieza vendida en mayor cantidad*/
+SELECT codpie, SUM(cantidad) from ventas group by codpie having sum(cantidad) >= ALL(SELECT SUM(cantidad) from ventas group by codpie);
+
+/*Proveedores que han vendido todas las piezas blancas*/
+SELECT codpro from proveedor p where not exists
+    ((SELECT codpie from pieza where upper(color) in 'BLANCO')
+    MINUS
+    (SELECT codpie from ventas v2 where v2.codpro=p.codpro));
+
+/*Piezas grises que han sido pedidas por todos los proyectos*/
+SELECT * from pieza pi where (upper(color) in 'GRIS') and not exists 
+    ((SELECT codpj from proyecto)
+    MINUS
+    (SELECT codpj from ventas v where v.codpie=pi.codpie));
+
+/*Proveedores que suministran la misma pieza a todos los proyectos*/
+SELECT codpro, codpie from ventas v1 where not exists 
+    ((SELECT codpj from proyecto where upper(proyecto.ciudad) in 'LONDRES')
+    MINUS
+    (SELECT codpj from ventas v2 where v1.codpie=v2.codpie and v1.codpro=v2.codpro));
+
+/*Vista de usuario*/
+create view ventas_P3 AS
+(SELECT codpro, sum(cantidad) total from ventas where codpie='P3' group by codpro having sum(cantidad)>100);
+
+select PROVEEDOR.CODPRO, PROVEEDOR.NOMPRO, PROVEEDOR.CIUDAD, PROVEEDOR.STATUS, VENTAS_P3.TOTAL from proveedor, ventas_P3 where ventas_P3.codpro = proveedor.codpro;
+
+select * from user_constraints;
+
+/*Introducir fecha distinto formato en sistema*/
+insert into ventas values('S2','P4','J4', 150, TO_DATE('05-03-1802', 'mm-dd-yyyy'));
+
+/*Fecha que devuelve el sistema en distinto formato*/
+select codpro, codpie, codpj, cantidad, to_char(fecha, 'Day, dd "de" month "de" yyyy') from ventas;
+
+/*Suma cantidad de cada mes del año 2015*/
+select to_char(fecha, 'Month'), sum(cantidad) from ventas where to_char(fecha, 'yyyy')='2015' group by to_char(fecha, 'Month') ;
+
+/*Crear cluster*/
+create cluster CL_Ventas_Prov (Codpro char(3));
+
+CREATE TABLE proveedor2(
+    CodPro  char(3)  Primary Key,
+    NomPro  varchar2(30)  not null,
+    Status  Number(2)   CHECK(Status>=1 and Status<=10),
+    Ciudad  varchar2(15)
+) cluster CL_Ventas_Prov(CodPro);
+
+CREATE TABLE ventas2(
+    CodPro  char(3)  references proveedor(CodPro),
+    CodPie  char(3)  references pieza(CodPie),
+    CodPj  char(3)   references proyecto(CodPj),
+    Cantidad  number(4),
+    Primary Key(CodPro, CodPie, CodPj)
+) Cluster CL_Ventas_Prov(CodPro);
+
+CREATE index CL_Ventas_Indx ON CLUSTER CL_Ventas_Prov;
+
+Insert into proveedor2 (Select * from proveedor);
+
+INSERT INTO VENTAS2 (Select codpro, codpie, codpj, cantidad from ventas);
+
+commit;
+
+select * from proveedor2;
